@@ -39,4 +39,6 @@ These Terms and Conditions are governed by the laws of the State of New York.
 
 ### Test Case Screenshot
 ![Test Case with terms.txt](test.png)
+![Test Case with terms.txt](test2.png)
+
 

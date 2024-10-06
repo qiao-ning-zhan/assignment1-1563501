@@ -41,9 +41,15 @@ class OpenAIInterface:
             "model": "gpt-3.5-turbo",
             "messages": conversation
         }
-        response = requests.post(f"{self.base_url}/chat/completions", headers=self.headers, json=payload)
-        response.raise_for_status()
-        return response.json()['choices'][0]['message']['content']
+        try:
+            response = requests.post(f"{self.base_url}/chat/completions", headers=self.headers, json=payload)
+            response.raise_for_status()  # Will raise HTTPError for bad responses
+            return response.json()['choices'][0]['message']['content']
+        except requests.exceptions.HTTPError as http_err:
+            st.error(f"HTTP error occurred: {http_err}")
+        except Exception as err:
+            st.error(f"An error occurred: {err}")
+        return "Error generating response"
 
 def chunk_document(text: str, chunk_size: int = 200) -> List[str]:
     words = text.split()
@@ -53,13 +59,24 @@ def read_docx(file):
     doc = Document(file)
     return " ".join([paragraph.text for paragraph in doc.paragraphs])
 
+@st.cache_data
+def process_document(uploaded_file):
+    if uploaded_file.type == "text/plain":
+        return uploaded_file.getvalue().decode("utf-8")
+    elif uploaded_file.type == "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+        return read_docx(uploaded_file)
+    return None
+
 def main():
     st.set_page_config(page_title="Legal Assistant", page_icon="⚖️", layout="wide")
     st.title("🤖 Your AI Legal Assistant")
 
     # Prompt user to input their OpenAI API Key
-    user_api_key = st.text_input("Please enter your OpenAI API Key", type="password")
-    if not user_api_key:
+    with st.form(key="api_key_form"):
+        user_api_key = st.text_input("Please enter your OpenAI API Key", type="password")
+        submit_button = st.form_submit_button(label="Submit")
+
+    if not user_api_key and submit_button:
         st.error("Please provide a valid OpenAI API Key.")
         return
 
@@ -81,18 +98,16 @@ def main():
     uploaded_file = st.file_uploader("Upload a legal document", type=["txt", "docx"])
     
     if uploaded_file and not st.session_state.document_processed:
-        if uploaded_file.type == "text/plain":
-            document = uploaded_file.getvalue().decode("utf-8")
-        elif uploaded_file.type == "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
-            document = read_docx(uploaded_file)
+        document = process_document(uploaded_file)
+        
+        if document:
+            chunks = chunk_document(document)
+            st.session_state.vector_db.add_documents(chunks)
+            st.session_state.document_processed = True
+            st.success(f"✅ {uploaded_file.name} processed and added to vector database!")
         else:
             st.error("Unsupported file type. Please upload a .txt or .docx file.")
             return
-
-        chunks = chunk_document(document)
-        st.session_state.vector_db.add_documents(chunks)
-        st.session_state.document_processed = True
-        st.success(f"✅ {uploaded_file.name} processed and added to vector database!")
 
     # Chat functionality
     if st.session_state.document_processed:
@@ -118,9 +133,10 @@ def main():
                 ]
                 response = st.session_state.openai_interface.generate_chat_response(conversation)
 
-            with st.chat_message("assistant"):
-                st.markdown(response)
-                st.session_state.chat_history.append({"role": "assistant", "content": response})
+            if response:
+                with st.chat_message("assistant"):
+                    st.markdown(response)
+                    st.session_state.chat_history.append({"role": "assistant", "content": response})
 
 if __name__ == "__main__":
     main()

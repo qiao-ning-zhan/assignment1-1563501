@@ -37,4 +37,6 @@ The Company is not liable for any damages arising from the use or inability to u
 7. Governing Law
 These Terms and Conditions are governed by the laws of the State of New York.
 
-### 
+### Test Case Screenshot
+![Test Case with terms.txt](test.png)
+

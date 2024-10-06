@@ -11,10 +11,6 @@ from docx import Document
 # Load environment variables
 load_dotenv()
 
-# Try to get API key from system environment variables
-SYSTEM_OPENAI_API_KEY = st.secrets.get("OPENAI_API_KEY", None)
-
-
 class VectorDatabase:
     def __init__(self):
         self.vectorizer = TfidfVectorizer()
@@ -61,18 +57,11 @@ def main():
     st.set_page_config(page_title="Legal Assistant", page_icon="⚖️", layout="wide")
     st.title("🤖 Your AI Legal Assistant")
 
-    # User selects how to provide the OpenAI API Key
-    api_key_option = st.radio(
-        "Choose how to provide the OpenAI API Key:",
-        ("Enter your own API Key manually")
-    )
-
-    if api_key_option == "Enter API Key manually":
-        # Allow the user to input their OpenAI API Key
-        user_api_key = st.text_input("Please enter your OpenAI API Key", type="password")
-        if not user_api_key:
-            st.error("Please provide a valid OpenAI API Key.")
-            return
+    # Prompt user to input their OpenAI API Key
+    user_api_key = st.text_input("Please enter your OpenAI API Key", type="password")
+    if not user_api_key:
+        st.error("Please provide a valid OpenAI API Key.")
+        return
 
     # Initialize the Vector Database
     if 'vector_db' not in st.session_state:

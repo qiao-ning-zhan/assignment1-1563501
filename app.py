@@ -64,7 +64,7 @@ def main():
     # User selects how to provide the OpenAI API Key
     api_key_option = st.radio(
         "Choose how to provide the OpenAI API Key:",
-        ("Enter API Key manually", "Use system environment variable")
+        ("Enter your own API Key manually")
     )
 
     if api_key_option == "Enter API Key manually":
@@ -72,12 +72,6 @@ def main():
         user_api_key = st.text_input("Please enter your OpenAI API Key", type="password")
         if not user_api_key:
             st.error("Please provide a valid OpenAI API Key.")
-            return
-    else:
-        # Use the system environment variable's API Key
-        user_api_key = SYSTEM_OPENAI_API_KEY
-        if not user_api_key:
-            st.error("No API Key found in system environment variables.")
             return
 
     # Initialize the Vector Database

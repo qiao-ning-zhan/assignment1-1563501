@@ -8,13 +8,11 @@ from sklearn.metrics.pairwise import cosine_similarity
 import numpy as np
 from docx import Document
 
+# Load environment variables
 load_dotenv()
 
-OPENAI_API_KEY = st.secrets["OPENAI_API_KEY"]
-if not OPENAI_API_KEY:
-    raise ValueError("OPENAI_API_KEY not found in environment variables")
-
-
+# Try to get API key from system environment variables
+SYSTEM_OPENAI_API_KEY = st.secrets.get("OPENAI_API_KEY", None)
 
 
 class VectorDatabase:
@@ -34,8 +32,8 @@ class VectorDatabase:
         return [self.documents[i] for i in top_k_indices]
 
 class OpenAIInterface:
-    def __init__(self):
-        self.api_key = OPENAI_API_KEY
+    def __init__(self, api_key: str):
+        self.api_key = api_key
         self.base_url = "https://api.openai.com/v1"
         self.headers = {
             "Authorization": f"Bearer {self.api_key}",
@@ -63,11 +61,32 @@ def main():
     st.set_page_config(page_title="Legal Assistant", page_icon="⚖️", layout="wide")
     st.title("🤖 Your AI Legal Assistant")
 
+    # User selects how to provide the OpenAI API Key
+    api_key_option = st.radio(
+        "Choose how to provide the OpenAI API Key:",
+        ("Enter API Key manually", "Use system environment variable")
+    )
+
+    if api_key_option == "Enter API Key manually":
+        # Allow the user to input their OpenAI API Key
+        user_api_key = st.text_input("Please enter your OpenAI API Key", type="password")
+        if not user_api_key:
+            st.error("Please provide a valid OpenAI API Key.")
+            return
+    else:
+        # Use the system environment variable's API Key
+        user_api_key = SYSTEM_OPENAI_API_KEY
+        if not user_api_key:
+            st.error("No API Key found in system environment variables.")
+            return
+
+    # Initialize the Vector Database
     if 'vector_db' not in st.session_state:
         st.session_state.vector_db = VectorDatabase()
 
+    # Initialize the OpenAI interface
     if 'openai_interface' not in st.session_state:
-        st.session_state.openai_interface = OpenAIInterface()
+        st.session_state.openai_interface = OpenAIInterface(user_api_key)
 
     if 'document_processed' not in st.session_state:
         st.session_state.document_processed = False
@@ -75,6 +94,7 @@ def main():
     if 'chat_history' not in st.session_state:
         st.session_state.chat_history = []
 
+    # File uploader for document
     uploaded_file = st.file_uploader("Upload a legal document", type=["txt", "docx"])
     
     if uploaded_file and not st.session_state.document_processed:
@@ -91,6 +111,7 @@ def main():
         st.session_state.document_processed = True
         st.success(f"✅ {uploaded_file.name} processed and added to vector database!")
 
+    # Chat functionality
     if st.session_state.document_processed:
         st.subheader("💬 Chat with Your Legal Assistant")
         for message in st.session_state.chat_history:
